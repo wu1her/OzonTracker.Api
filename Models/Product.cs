@@ -1,4 +1,4 @@
-﻿namespace OzonTracker.Api.Models;
+namespace OzonTracker.Api.Models;
 
 public sealed class Product
 {
@@ -27,4 +27,12 @@ public sealed class Product
     public DateTimeOffset AddedAt { get; set; }
 
     public DateTimeOffset LastUpdatedAt { get; set; }
+
+    public int SoldUnits { get; set; }
+
+    public decimal Rating { get; set; }
+
+    public int ReviewCount { get; set; }
+
+    public List<ProductSnapshot> History { get; set; } = [];
 }

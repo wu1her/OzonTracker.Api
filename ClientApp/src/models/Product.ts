@@ -9,4 +9,19 @@ export interface Product {
   stocks: number;
   addedAt: string;
   lastUpdatedAt: string;
+  soldUnits: number;
+  rating: number;
+  reviewCount: number;
+  history: ProductSnapshot[];
+}
+
+export interface ProductSnapshot {
+  id: number;
+  capturedAt: string;
+  price: number;
+  ozonCardPrice: number;
+  stocks: number;
+  soldUnits: number;
+  rating: number;
+  reviewCount: number;
 }

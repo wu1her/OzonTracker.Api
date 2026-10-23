@@ -1,170 +1,43 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using OzonTracker.Api.Contracts;
-using OzonTracker.Api.Models;
 using OzonTracker.Api.Services;
 using OzonTracker.Api.Utilities;
 
 namespace OzonTracker.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
-public sealed class ProductsController : ControllerBase
+[Route("api/products")]
+public sealed class ProductsController(IProductRepository repository) : ControllerBase
 {
-    private readonly IProductRepository _repository;
-
-    public ProductsController(IProductRepository repository)
-    {
-        _repository = repository;
-    }
-
-    /// <summary>
-    /// Получить все добавленные товары.
-    /// </summary>
     [HttpGet]
-    [ProducesResponseType(
-        typeof(IReadOnlyCollection<Product>),
-        StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyCollection<Product>>> GetAll(
-        CancellationToken cancellationToken)
-    {
-        var products = await _repository.GetAllAsync(
-            cancellationToken);
+    public async Task<IActionResult> GetAll(CancellationToken cancellationToken) =>
+        Ok(await repository.GetAllAsync(cancellationToken));
 
-        return Ok(products);
-    }
-
-    /// <summary>
-    /// Получить товар по ID Ozon.
-    /// </summary>
     [HttpGet("{ozonProductId:long}")]
-    [ProducesResponseType(
-        typeof(Product),
-        StatusCodes.Status200OK)]
-    [ProducesResponseType(
-        StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Product>> GetById(
-        long ozonProductId,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> GetById(long ozonProductId, CancellationToken cancellationToken)
     {
-        var product = await _repository.GetByOzonIdAsync(
-            ozonProductId,
-            cancellationToken);
-
-        if (product is null)
-        {
-            return NotFound(new
-            {
-                message = "Товар не найден."
-            });
-        }
-
-        return Ok(product);
+        var product = await repository.GetByOzonIdAsync(ozonProductId, cancellationToken);
+        return product is null ? NotFound(new { message = "Товар не отслеживается." }) : Ok(product);
     }
 
-    /// <summary>
-    /// Добавить товар по ссылке или ID.
-    /// </summary>
     [HttpPost]
-    [ProducesResponseType(
-        typeof(Product),
-        StatusCodes.Status201Created)]
-    [ProducesResponseType(
-        StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(
-        StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<Product>> Add(
-        [FromBody] AddProductRequest request,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> Add(AddProductRequest request, CancellationToken cancellationToken)
     {
-        if (!OzonProductIdParser.TryParse(
-                request.Value,
-                out var ozonProductId))
-        {
-            return BadRequest(new
-            {
-                message =
-                    "Не удалось определить ID товара. " +
-                    "Введите числовой ID или корректную ссылку Ozon."
-            });
-        }
+        if (!OzonProductIdParser.TryParse(request.Value, out var id))
+            return BadRequest(new { message = "Введите числовой ID или ссылку на товар из демокаталога." });
 
-        var existingProduct =
-            await _repository.GetByOzonIdAsync(
-                ozonProductId,
-                cancellationToken);
+        var result = await repository.TrackAsync(id, cancellationToken);
+        if (result == TrackingResult.NotFound)
+            return NotFound(new { message = "Товара нет в демонстрационной БД. Выберите товар из каталога." });
+        if (result == TrackingResult.AlreadyTracked)
+            return Conflict(new { message = "Этот товар уже отслеживается." });
 
-        if (existingProduct is not null)
-        {
-            return Conflict(new
-            {
-                message = "Этот товар уже добавлен.",
-                product = existingProduct
-            });
-        }
-
-        var now = DateTimeOffset.UtcNow;
-
-        var product = new Product
-        {
-            Id = Guid.NewGuid(),
-            OzonProductId = ozonProductId,
-            Name = $"Товар Ozon {ozonProductId}",
-            Description =
-                "Информация ещё не загружена из Ozon API.",
-            Price = 0,
-            OzonCardPrice = 0,
-            Stocks = 0,
-            AddedAt = now,
-            LastUpdatedAt = now
-        };
-
-        try
-        {
-            await _repository.AddAsync(
-                product,
-                cancellationToken);
-        }
-        catch (InvalidOperationException exception)
-        {
-            return Conflict(new
-            {
-                message = exception.Message
-            });
-        }
-
-        return CreatedAtAction(
-            nameof(GetById),
-            new
-            {
-                ozonProductId = product.OzonProductId
-            },
-            product);
+        return CreatedAtAction(nameof(GetById), new { ozonProductId = id },
+            await repository.GetByOzonIdAsync(id, cancellationToken));
     }
 
-    /// <summary>
-    /// Удалить товар из отслеживания.
-    /// </summary>
     [HttpDelete("{ozonProductId:long}")]
-    [ProducesResponseType(
-        StatusCodes.Status204NoContent)]
-    [ProducesResponseType(
-        StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(
-        long ozonProductId,
-        CancellationToken cancellationToken)
-    {
-        var deleted = await _repository.DeleteAsync(
-            ozonProductId,
-            cancellationToken);
-
-        if (!deleted)
-        {
-            return NotFound(new
-            {
-                message = "Товар не найден."
-            });
-        }
-
-        return NoContent();
-    }
+    public async Task<IActionResult> Delete(long ozonProductId, CancellationToken cancellationToken) =>
+        await repository.DeleteAsync(ozonProductId, cancellationToken)
+            ? NoContent() : NotFound(new { message = "Товар не отслеживается." });
 }

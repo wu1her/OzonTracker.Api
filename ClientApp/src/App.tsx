@@ -46,6 +46,7 @@ import {
   getProducts,
 } from "./api/productsApi";
 import type { Product } from "./models/Product";
+import { DemoControls, PriceChart, SnapshotTable } from "./DemoData";
 import "./App.css";
 
 type AppPage =
@@ -126,10 +127,12 @@ function Sidebar({
   page,
   refreshMinutes,
   onNavigate,
+  apiError,
 }: {
   page: AppPage;
   refreshMinutes: number;
   onNavigate: (page: AppPage) => void;
+  apiError: string | null;
 }) {
   return (
     <aside className="sidebar">
@@ -175,8 +178,8 @@ function Sidebar({
             <Clock3 size={17} />
           </span>
           <div>
-            <span>Следующее обновление</span>
-            <strong>через {refreshMinutes} мин.</strong>
+            <span>Обновление списка</span>
+            <strong>каждые {refreshMinutes} мин.</strong>
           </div>
         </div>
 
@@ -187,8 +190,8 @@ function Sidebar({
             <Activity size={17} />
           </span>
           <div>
-            <span>Статус API</span>
-            <strong className="status-online">Подключено</strong>
+            <span>База данных</span>
+            <strong className={apiError ? "status-pending" : "status-online"}>{apiError ? "Недоступна" : "Деморежим"}</strong>
           </div>
         </div>
       </div>
@@ -210,7 +213,7 @@ function Topbar({
     <header className="topbar">
       <div className="topbar-breadcrumb">
         <span className="live-dot" />
-        <span>Сервис работает</span>
+        <span>Демонстрация · SQL Server</span>
       </div>
 
       <div className="topbar-actions">
@@ -245,8 +248,8 @@ function Topbar({
                   <Check size={15} />
                 </span>
                 <div>
-                  <strong>API подключён</strong>
-                  <span>Можно добавлять товары в отслеживание.</span>
+                  <strong>Демонстрационные данные</strong>
+                  <span>Выберите товар из каталога и смоделируйте изменения.</span>
                 </div>
               </div>
             </div>
@@ -422,8 +425,7 @@ function ConfirmDialog({
         <h2 id="confirm-title">Удалить товар?</h2>
         <p>
           Товар <strong>{product.name}</strong> будет удалён из списка
-          отслеживания. История в текущем JSON-хранилище также станет
-          недоступна.
+          отслеживания. История останется в SQL Server. Товар можно снова добавить из каталога.
         </p>
         <div className="confirm-actions">
           <button className="button secondary" type="button" onClick={onCancel}>
@@ -540,11 +542,13 @@ function ProductsPage({
         }
       />
 
+      <DemoControls products={products} onAdd={onAdd} onRefresh={onRefresh} />
+
       <section className="add-product-panel">
         <div className="add-product-panel-copy">
           <span className="panel-kicker">Новый товар</span>
           <strong>Добавить в отслеживание</strong>
-          <span>Поддерживается обычный ID или полная ссылка Ozon.</span>
+          <span>Введите ID из демокаталога (100000001–100000012) или ссылку с этим ID.</span>
         </div>
 
         <form className="add-product-form" onSubmit={handleSubmit}>
@@ -675,7 +679,7 @@ function ProductsPage({
                       <span className="secondary-text">{product.description}</span>
                     </td>
                     <td>
-                      <span className="tag neutral">Ozon API</span>
+                      <span className="tag neutral">SQL Server · Демо</span>
                     </td>
                     <td>{formatMoney(product.price)}</td>
                     <td className="ozon-price">{formatMoney(product.ozonCardPrice)}</td>
@@ -756,44 +760,15 @@ function ProductDetailsPage({
 
   function renderTabContent() {
     if (tab !== "overview") {
-      const map: Record<Exclude<DetailTab, "overview">, { icon: LucideIcon; title: string; description: string }> = {
-        statistics: {
-          icon: BarChart3,
-          title: "Статистика ещё не накоплена",
-          description: "После регулярного опроса Ozon API здесь появятся графики и агрегированные показатели.",
-        },
-        prices: {
-          icon: TrendingUp,
-          title: "История цен пока отсутствует",
-          description: "Сервис начнёт строить историю после первого изменения цены.",
-        },
-        stocks: {
-          icon: Box,
-          title: "История остатков пока отсутствует",
-          description: "Здесь будут отображаться изменения доступного количества товара.",
-        },
-        sales: {
-          icon: Activity,
-          title: "Данные о продажах не загружены",
-          description: "Раздел будет подключён к Statistics API на следующем этапе.",
-        },
-        reviews: {
-          icon: Clipboard,
-          title: "Отзывы ещё не загружены",
-          description: "После подключения соответствующего endpoint здесь появятся рейтинг и отзывы.",
-        },
-      };
-
-      const current = map[tab];
-      return (
-        <section className="details-single-panel">
-          <EmptyState
-            icon={current.icon}
-            title={current.title}
-            description={current.description}
-          />
-        </section>
-      );
+      return <section className="dashboard-panel details-single-panel">
+        <h2>{tabs.find(item => item.id === tab)?.label}</h2>
+        {tab === "reviews" && <p>Демонстрационный рейтинг: {product.rating.toFixed(1)} из 5.
+          Отзывов: {product.reviewCount}. В БД хранится статистика отзывов; тексты отзывов не моделируются.</p>}
+        {tab === "sales" && <p>Продано всего: {product.soldUnits} шт. Счётчик накопительный; все продажи вымышлены.</p>}
+        {tab === "stocks" && <p>Сейчас в наличии: {product.stocks} шт. История включает поступления и уменьшение остатков.</p>}
+        {(tab === "prices" || tab === "statistics") && <PriceChart history={product.history} />}
+        <SnapshotTable product={product} />
+      </section>;
     }
 
     return (
@@ -802,9 +777,9 @@ function ProductDetailsPage({
           <MetricCard label="Текущая цена" value={formatMoney(product.price)} icon={TrendingUp} accent="blue" />
           <MetricCard label="Цена по Ozon карте" value={formatMoney(product.ozonCardPrice)} icon={Sparkles} accent="green" />
           <MetricCard label="Остатки" value={`${product.stocks} шт.`} icon={Box} accent="orange" />
-          <MetricCard label="Рейтинг товара" value="—" icon={Activity} />
-          <MetricCard label="Количество отзывов" value="—" icon={Clipboard} />
-          <MetricCard label="Выкуп" value="—" icon={Check} />
+          <MetricCard label="Рейтинг товара" value={product.rating.toFixed(1)} icon={Activity} />
+          <MetricCard label="Количество отзывов" value={product.reviewCount.toString()} icon={Clipboard} />
+          <MetricCard label="Продано всего" value={`${product.soldUnits} шт.`} icon={Check} />
         </section>
 
         <section className="details-grid">
@@ -814,31 +789,10 @@ function ProductDetailsPage({
                 <span className="panel-kicker">Цена</span>
                 <h2>Динамика цен</h2>
               </div>
-              <span className="tag neutral">Последние 7 дней</span>
+              <span className="tag neutral">Последние 60 срезов</span>
             </div>
 
-            <div className="chart-placeholder">
-              <div className="chart-grid-lines">
-                <span />
-                <span />
-                <span />
-                <span />
-              </div>
-              <svg viewBox="0 0 700 210" role="img" aria-label="Пустой график динамики цен">
-                <path d="M20 160 C110 150 160 135 235 140 S390 125 470 132 S610 115 680 120" className="chart-line blue" />
-                <path d="M20 178 C115 168 180 165 250 166 S390 154 475 158 S610 145 680 150" className="chart-line green" />
-              </svg>
-              <div className="chart-overlay-message">
-                <BarChart3 size={24} />
-                <strong>Ожидаем первые изменения</strong>
-                <span>Линии являются визуальным состоянием макета. Реальные точки появятся после накопления истории.</span>
-              </div>
-            </div>
-
-            <div className="chart-legend">
-              <span><i className="legend-dot blue" /> Цена</span>
-              <span><i className="legend-dot green" /> Цена по Ozon карте</span>
-            </div>
+            <PriceChart history={product.history} />
           </article>
 
           <article className="dashboard-panel changes-panel">
@@ -850,27 +804,11 @@ function ProductDetailsPage({
             </div>
 
             <div className="timeline">
-              <div className="timeline-item">
-                <span className="timeline-icon blue"><Database size={15} /></span>
-                <div>
-                  <strong>Товар добавлен в систему</strong>
-                  <span>{formatDate(product.addedAt)}</span>
-                </div>
-              </div>
-              <div className="timeline-item">
-                <span className="timeline-icon green"><RefreshCcw size={15} /></span>
-                <div>
-                  <strong>Последняя синхронизация</strong>
-                  <span>{formatDate(product.lastUpdatedAt)}</span>
-                </div>
-              </div>
-              <div className="timeline-item muted">
-                <span className="timeline-icon"><Clock3 size={15} /></span>
-                <div>
-                  <strong>Ожидание следующего обновления</strong>
-                  <span>Новые изменения появятся автоматически.</span>
-                </div>
-              </div>
+              {product.history.slice(-5).reverse().map(point => <div className="timeline-item" key={point.id}>
+                <span className="timeline-icon blue"><History size={15} /></span>
+                <div><strong>{formatMoney(point.price)} · {point.stocks} шт.</strong>
+                  <span>{formatDate(point.capturedAt)} · Продано всего: {point.soldUnits}</span></div>
+              </div>)}
             </div>
           </article>
         </section>
@@ -1016,20 +954,20 @@ function StatisticsPage({ products }: { products: Product[] }) {
 
           <div className="health-list">
             <div>
-              <span>API backend</span>
-              <strong className="status-online">Работает</strong>
+              <span>Backend</span>
+              <strong>ASP.NET Core 10</strong>
             </div>
             <div>
-              <span>JSON-хранилище</span>
-              <strong>Подключено</strong>
+              <span>Хранилище</span>
+              <strong>SQL Server</strong>
             </div>
             <div>
-              <span>Регулярный сбор</span>
-              <strong className="status-pending">Не настроен</strong>
+              <span>Изменения данных</span>
+              <strong>Кнопка моделирования</strong>
             </div>
             <div>
-              <span>Ozon Seller API</span>
-              <strong className="status-pending">Следующий этап</strong>
+              <span>Источник данных</span>
+              <strong>Демонстрационная БД</strong>
             </div>
           </div>
         </article>
@@ -1042,24 +980,19 @@ function HistoryPage({ products }: { products: Product[] }) {
   const events = useMemo(
     () =>
       products
-        .flatMap((product) => [
-          {
-            key: `${product.id}-added`,
-            timestamp: product.addedAt,
-            title: "Товар добавлен",
-            description: `${product.name} · ID ${product.ozonProductId}`,
-            icon: Plus,
-            tone: "blue",
-          },
-          {
-            key: `${product.id}-updated`,
-            timestamp: product.lastUpdatedAt,
-            title: "Данные обновлены",
-            description: `${product.name} · последняя синхронизация`,
-            icon: RefreshCcw,
-            tone: "green",
-          },
-        ])
+        .flatMap((product) => product.history.map((point, index) => {
+          const previous = product.history[index - 1];
+          return {
+            key: `${product.id}-${point.id}`,
+            timestamp: point.capturedAt,
+            title: previous
+              ? `Цена: ${formatMoney(previous.price)} → ${formatMoney(point.price)} · Остаток: ${previous.stocks} → ${point.stocks}`
+              : "Первый срез товара",
+            description: `${product.name} · Продано: ${point.soldUnits} · Отзывов: ${point.reviewCount}`,
+            icon: previous ? RefreshCcw : Plus,
+            tone: previous ? "green" : "blue",
+          };
+        }))
         .sort(
           (a, b) =>
             new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
@@ -1072,7 +1005,7 @@ function HistoryPage({ products }: { products: Product[] }) {
       <PageHeader
         eyebrow="Журнал"
         title="История изменений"
-        description="События добавления и обновления товаров. Реальные изменения цены и остатков появятся после подключения фонового сборщика."
+        description="Сохранённые срезы из SQL Server: цены, остатки, продажи и отзывы. Все данные демонстрационные."
       />
 
       <section className="history-card">
@@ -1134,7 +1067,7 @@ function SettingsPage({
             <span className="settings-icon"><Clock3 size={19} /></span>
             <div>
               <strong>Интервал обновления</strong>
-              <span>Как часто фоновый сервис должен опрашивать API.</span>
+              <span>Как часто интерфейс перечитывает данные из БД. Демоизменения запускаются кнопкой на главной.</span>
             </div>
           </div>
 
@@ -1221,44 +1154,44 @@ function AboutPage() {
           <span className="about-logo"><Sparkles size={28} /></span>
           <h2>Панель мониторинга товаров Ozon</h2>
           <p>
-            Текущая версия умеет хранить список товаров в JSON, добавлять их по
-            ссылке или ID, открывать карточку и удалять из отслеживания.
+            Демонстрационная версия хранит товары и историю в SQL Server, добавляет их по
+            ссылке или ID из каталога, показывает карточки и сохраняет историю изменений.
           </p>
         </div>
-        <span className="version-badge">UI prototype · 0.2</span>
+        <span className="version-badge">SQL Server Demo · 1.0</span>
       </section>
 
       <section className="about-grid">
         <article className="feature-card">
           <Database size={21} />
-          <strong>JSON-хранилище</strong>
-          <span>Простая локальная база для раннего прототипа.</span>
+          <strong>SQL Server</strong>
+          <span>Каталог и срезы за 30 дней, сохранение изменений между запусками.</span>
         </article>
         <article className="feature-card">
           <Activity size={21} />
-          <strong>Будущая аналитика</strong>
+          <strong>Аналитика из БД</strong>
           <span>Цена, остатки, продажи, отзывы и история изменений.</span>
         </article>
         <article className="feature-card">
           <ShieldCheck size={21} />
           <strong>ASP.NET API</strong>
-          <span>Контроллеры, DI и возможность перейти на PostgreSQL.</span>
+          <span>Контроллеры, параметризованные SQL-запросы и управляемая демонстрация.</span>
         </article>
       </section>
 
       <section className="roadmap-card">
         <div className="panel-header">
           <div>
-            <span className="panel-kicker">План</span>
-            <h2>Следующие этапы</h2>
+            <span className="panel-kicker">Демонстрация</span>
+            <h2>Возможности проекта</h2>
           </div>
         </div>
         <div className="roadmap-list">
-          <div className="roadmap-item done"><Check size={16} /><span>Backend и JSON-хранилище</span></div>
+          <div className="roadmap-item done"><Check size={16} /><span>Backend и SQL Server</span></div>
           <div className="roadmap-item done"><Check size={16} /><span>React-интерфейс и навигация</span></div>
-          <div className="roadmap-item current"><Activity size={16} /><span>Подключение Seller API и Performance API</span></div>
-          <div className="roadmap-item"><Clock3 size={16} /><span>Фоновое обновление каждый час</span></div>
-          <div className="roadmap-item"><Clock3 size={16} /><span>История изменений и реальные графики</span></div>
+          <div className="roadmap-item done"><Activity size={16} /><span>SQL Server и демонстрационные срезы</span></div>
+          <div className="roadmap-item done"><Check size={16} /><span>Перечитывание БД по таймеру</span></div>
+          <div className="roadmap-item done"><Check size={16} /><span>История изменений и графики из БД</span></div>
         </div>
       </section>
     </main>
@@ -1270,6 +1203,7 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -1303,6 +1237,7 @@ export default function App() {
 
     try {
       const result = await getProducts();
+      setApiError(null);
       setProducts(result);
       setSelectedProduct((current) =>
         current
@@ -1310,6 +1245,7 @@ export default function App() {
           : null,
       );
     } catch (error) {
+      setApiError(error instanceof Error ? error.message : "Не удалось загрузить товары.");
       showToast(
         "error",
         error instanceof Error ? error.message : "Не удалось загрузить товары.",
@@ -1322,6 +1258,11 @@ export default function App() {
   useEffect(() => {
     void loadProducts();
   }, [loadProducts]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => void loadProducts(), refreshMinutes * 60_000);
+    return () => window.clearInterval(timer);
+  }, [loadProducts, refreshMinutes]);
 
   async function handleAddProduct(value: string): Promise<boolean> {
     setIsAdding(true);
@@ -1437,6 +1378,7 @@ export default function App() {
         page={page}
         refreshMinutes={refreshMinutes}
         onNavigate={handleNavigate}
+        apiError={apiError}
       />
 
       <div className="content-column">
@@ -1446,6 +1388,7 @@ export default function App() {
             setTheme((current) => (current === "dark" ? "light" : "dark"))
           }
         />
+        {apiError && <div className="database-error" role="alert">{apiError}</div>}
         {renderPage()}
       </div>
 

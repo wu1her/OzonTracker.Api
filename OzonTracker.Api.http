@@ -1,6 +1,24 @@
-@OzonTracker.Api_HostAddress = http://localhost:5076
+@OzonTracker.Api_HostAddress = http://localhost:5080
 
-GET {{OzonTracker.Api_HostAddress}}/weatherforecast/
+GET {{OzonTracker.Api_HostAddress}}/api/products
 Accept: application/json
 
 ###
+GET {{OzonTracker.Api_HostAddress}}/api/catalog
+Accept: application/json
+
+### Add a product from the seeded catalog (409 if already tracked)
+POST {{OzonTracker.Api_HostAddress}}/api/products
+Content-Type: application/json
+
+{"value":"100000007"}
+
+###
+GET {{OzonTracker.Api_HostAddress}}/api/products/100000007
+Accept: application/json
+
+### Generate demo snapshots for all tracked products
+POST {{OzonTracker.Api_HostAddress}}/api/demo/simulate
+
+### Untrack without deleting price history
+DELETE {{OzonTracker.Api_HostAddress}}/api/products/100000007

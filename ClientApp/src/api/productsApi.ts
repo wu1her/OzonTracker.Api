@@ -65,3 +65,16 @@ export async function deleteProduct(
     throw new Error(await getErrorMessage(response));
   }
 }
+
+export async function getCatalog(signal?: AbortSignal): Promise<Product[]> {
+  const response = await fetch(`${apiBaseUrl}/api/catalog`, { signal });
+  if (!response.ok) throw new Error(await getErrorMessage(response));
+  return response.json() as Promise<Product[]>;
+}
+
+export async function simulateChanges(): Promise<number> {
+  const response = await fetch(`${apiBaseUrl}/api/demo/simulate`, { method: "POST" });
+  if (!response.ok) throw new Error(await getErrorMessage(response));
+  const result = await response.json() as { updatedProducts: number };
+  return result.updatedProducts;
+}

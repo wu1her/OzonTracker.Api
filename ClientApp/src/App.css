@@ -1968,3 +1968,21 @@
     flex-direction: column;
   }
 }
+.demo-controls {
+  min-height: auto;
+  margin-bottom: 16px;
+}
+.demo-controls h2 { margin: 0; font-size: 16px; }
+.demo-controls p, .details-single-panel p { color: var(--text-muted); line-height: 1.6; }
+.demo-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.demo-actions select {
+  max-width: 100%; flex: 1; min-width: 200px; padding: 10px;
+  color: var(--text); background: var(--panel-solid); border: 1px solid var(--border); border-radius: 8px;
+}
+.price-history-chart { width: 100%; height: auto; min-height: 180px; color: var(--text-muted); margin-top: 16px; }
+.snapshot-table-wrap { overflow: auto; max-height: 520px; margin-top: 20px; }
+.snapshot-table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+.snapshot-table caption { padding: 12px; text-align: left; color: var(--text-muted); }
+.snapshot-table th, .snapshot-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+.snapshot-table th { color: var(--text-muted); }
+.database-error { margin: 16px; padding: 16px; color: var(--red); border: 1px solid var(--red); border-radius: 8px; }
