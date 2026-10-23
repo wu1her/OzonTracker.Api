@@ -12,6 +12,8 @@ export interface Product {
   soldUnits: number;
   rating: number;
   reviewCount: number;
+  isFavorite: boolean;
+  targetPrice: number | null;
   history: ProductSnapshot[];
 }
 

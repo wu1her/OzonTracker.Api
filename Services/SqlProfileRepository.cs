@@ -5,7 +5,7 @@ using OzonTracker.Api.Models;
 
 namespace OzonTracker.Api.Services;
 
-public sealed class SqlProfileRepository(IConfiguration configuration)
+public sealed class SqlProfileRepository(IConfiguration configuration, CurrentAccount account)
 {
     private SqlConnection CreateConnection() => new(configuration.GetConnectionString("OzonTracker"));
 
@@ -15,14 +15,16 @@ public sealed class SqlProfileRepository(IConfiguration configuration)
         await connection.OpenAsync(ct);
         await using var command = new SqlCommand("""
             SELECT DisplayName, FullName, Phone, About, Email, Subscription,
-                   IIF(AvatarData IS NULL, 0, 1), UpdatedAt
-            FROM dbo.UserProfiles WHERE Id = 1;
+                   IIF(AvatarData IS NULL, 0, 1), UpdatedAt, RefreshMinutes,
+                   (SELECT Email FROM dbo.Accounts WHERE Id = @account), NotificationsEnabled, CompactTable
+            FROM dbo.AccountProfiles WHERE AccountId = @account;
             """, connection);
+        command.Parameters.Add("@account", SqlDbType.Int).Value = account.Id;
         await using var reader = await command.ExecuteReaderAsync(ct);
-        if (!await reader.ReadAsync(ct)) throw new InvalidOperationException("Выполните Database/profile.sql.");
+        if (!await reader.ReadAsync(ct)) throw new InvalidOperationException("Выполните Database/accounts.sql.");
         return new DemoProfile(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
             reader.IsDBNull(4) ? null : reader.GetString(4), reader.GetString(5),
-            reader.GetInt32(6) == 0 ? null : $"/api/profile/avatar?v={reader.GetDateTimeOffset(7).UtcTicks}");
+            reader.GetInt32(6) == 0 ? null : $"/api/profile/avatar?v={reader.GetDateTimeOffset(7).UtcTicks}", reader.GetInt32(8), reader.GetString(9), reader.GetBoolean(10), reader.GetBoolean(11));
     }
 
     public Task<DemoProfile> UpdateAsync(UpdateProfileRequest request, CancellationToken ct) =>
@@ -45,14 +47,21 @@ public sealed class SqlProfileRepository(IConfiguration configuration)
             new SqlParameter("@data", SqlDbType.VarBinary, -1) { Value = (object?)data ?? DBNull.Value },
             new SqlParameter("@contentType", SqlDbType.VarChar, 10) { Value = (object?)contentType ?? DBNull.Value });
 
+    public Task<DemoProfile> SetSettingsAsync(RefreshSettingsRequest settings, CancellationToken ct) =>
+        UpdateColumnsAsync("RefreshMinutes = @minutes, NotificationsEnabled = @notifications, CompactTable = @compact", ct,
+            new SqlParameter("@minutes", SqlDbType.Int) { Value = settings.RefreshMinutes },
+            new SqlParameter("@notifications", SqlDbType.Bit) { Value = settings.NotificationsEnabled },
+            new SqlParameter("@compact", SqlDbType.Bit) { Value = settings.CompactTable });
+
     // The assignments are internal constants; all user-provided values are SQL parameters.
     private async Task<DemoProfile> UpdateColumnsAsync(string assignments, CancellationToken ct, params SqlParameter[] parameters)
     {
         await using var connection = CreateConnection();
         await connection.OpenAsync(ct);
-        await using var command = new SqlCommand($"UPDATE dbo.UserProfiles SET {assignments}, UpdatedAt = SYSDATETIMEOFFSET() WHERE Id = 1;", connection);
+        await using var command = new SqlCommand($"UPDATE dbo.AccountProfiles SET {assignments}, UpdatedAt = SYSDATETIMEOFFSET() WHERE AccountId = @account;", connection);
         command.Parameters.AddRange(parameters);
-        if (await command.ExecuteNonQueryAsync(ct) != 1) throw new InvalidOperationException("Выполните Database/profile.sql.");
+        command.Parameters.Add("@account", SqlDbType.Int).Value = account.Id;
+        if (await command.ExecuteNonQueryAsync(ct) != 1) throw new InvalidOperationException("Выполните Database/accounts.sql.");
         return await GetAsync(ct);
     }
 
@@ -60,7 +69,8 @@ public sealed class SqlProfileRepository(IConfiguration configuration)
     {
         await using var connection = CreateConnection();
         await connection.OpenAsync(ct);
-        await using var command = new SqlCommand("SELECT AvatarData, AvatarContentType FROM dbo.UserProfiles WHERE Id = 1 AND AvatarData IS NOT NULL;", connection);
+        await using var command = new SqlCommand("SELECT AvatarData, AvatarContentType FROM dbo.AccountProfiles WHERE AccountId = @account AND AvatarData IS NOT NULL;", connection);
+        command.Parameters.Add("@account", SqlDbType.Int).Value = account.Id;
         await using var reader = await command.ExecuteReaderAsync(ct);
         return await reader.ReadAsync(ct) ? new ProfileAvatar((byte[])reader[0], reader.GetString(1)) : null;
     }
@@ -74,30 +84,36 @@ public sealed class SqlProfileRepository(IConfiguration configuration)
         await using var connection = CreateConnection();
         await connection.OpenAsync(ct);
         await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(ct);
-        await using var access = new SqlCommand("SELECT Subscription FROM dbo.UserProfiles WITH (UPDLOCK, HOLDLOCK) WHERE Id = 1;", connection, transaction);
+        await using var access = new SqlCommand("SELECT Subscription FROM dbo.AccountProfiles WITH (UPDLOCK, HOLDLOCK) WHERE AccountId = @account;", connection, transaction);
+        access.Parameters.Add("@account", SqlDbType.Int).Value = account.Id;
         // The profile lock also prevents a simultaneous downgrade from bypassing the Pro gate.
         if ((string?)await access.ExecuteScalarAsync(ct) != "Pro") return null;
         if (clear)
         {
-            await using var delete = new SqlCommand("DELETE dbo.ChatMessages WHERE ProfileId = 1;", connection, transaction);
+            await using var delete = new SqlCommand("DELETE dbo.AccountChatMessages WHERE AccountId = @account;", connection, transaction);
+            delete.Parameters.Add("@account", SqlDbType.Int).Value = account.Id;
             await delete.ExecuteNonQueryAsync(ct);
         }
         if (text is not null)
         {
             await using var insert = new SqlCommand("""
-                INSERT dbo.ChatMessages(ProfileId, Role, Text)
-                VALUES (1, 'user', @text);
-                INSERT dbo.ChatMessages(ProfileId, Role, Text) VALUES (1, 'assistant', @answer);
+                INSERT dbo.AccountChatMessages(AccountId, Role, Text)
+                VALUES (@account, 'user', @text);
+                INSERT dbo.AccountChatMessages(AccountId, Role, Text) VALUES (@account, 'assistant', @answer);
                 """, connection, transaction);
+            insert.Parameters.Add("@account", SqlDbType.Int).Value = account.Id;
             insert.Parameters.Add("@text", SqlDbType.NVarChar, 1000).Value = text;
             insert.Parameters.Add("@answer", SqlDbType.NVarChar, 2000).Value = answer!;
             await insert.ExecuteNonQueryAsync(ct);
         }
         var messages = new List<ChatMessage>();
-        await using (var read = new SqlCommand("SELECT TOP (100) Id, Role, Text, CreatedAt FROM dbo.ChatMessages WHERE ProfileId = 1 ORDER BY Id DESC;", connection, transaction))
-        await using (var reader = await read.ExecuteReaderAsync(ct))
-            while (await reader.ReadAsync(ct))
-                messages.Add(new(reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetDateTimeOffset(3)));
+        await using (var read = new SqlCommand("SELECT TOP (100) Id, Role, Text, CreatedAt FROM dbo.AccountChatMessages WHERE AccountId = @account ORDER BY Id DESC;", connection, transaction))
+        {
+            read.Parameters.Add("@account", SqlDbType.Int).Value = account.Id;
+            await using (var reader = await read.ExecuteReaderAsync(ct))
+                while (await reader.ReadAsync(ct))
+                    messages.Add(new(reader.GetInt64(0), reader.GetString(1), reader.GetString(2), reader.GetDateTimeOffset(3)));
+        }
         await transaction.CommitAsync(ct);
         messages.Reverse();
         return messages;

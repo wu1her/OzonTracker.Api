@@ -199,7 +199,7 @@ export function ProfilePage({
               ? "Free · Basic"
               : profile.subscription}
           </span>
-          <p>Локальный демонстрационный профиль</p>
+          <p>Личный аккаунт</p>
           <label
             className={`button secondary avatar-picker ${busy ? "disabled" : ""}`}
           >
@@ -315,9 +315,13 @@ export function ProfilePage({
             </button>
           </form>
           <section className="settings-card email-card">
+            <p>
+              Почта для входа: <strong>{profile.loginEmail}</strong>. Привязка
+              ниже не меняет адрес для входа.
+            </p>
             <div className="account-section-heading">
               <Mail size={20} />
-              <h2>Электронная почта</h2>
+              <h2>Контактная почта · демо</h2>
             </div>
             <p>
               {profile.email ? (

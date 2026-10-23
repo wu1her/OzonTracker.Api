@@ -1,47 +1,7 @@
 import type { ChatMessage, DemoProfile, Subscription } from "../models/Profile";
 
-const apiBase = (
-  import.meta.env.VITE_API_URL ?? "http://localhost:5080"
-).replace(/\/$/, "");
+import { apiBase, checked, json } from "./client";
 export const avatarAddress = (url: string) => `${apiBase}${url}`;
-
-async function checked(path: string, init?: RequestInit): Promise<Response> {
-  const response = await fetch(`${apiBase}${path}`, init);
-  if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as {
-      message?: string;
-      title?: string;
-      errors?: Record<string, string[]>;
-    } | null;
-    const errors = body?.errors
-      ? Object.values(body.errors).flat().join(" ")
-      : null;
-    throw new Error(
-      body?.message ??
-        errors ??
-        body?.title ??
-        `Ошибка HTTP ${response.status}`,
-    );
-  }
-  return response;
-}
-
-async function json<T>(
-  path: string,
-  method = "GET",
-  body?: unknown,
-): Promise<T> {
-  const response = await checked(path, {
-    method,
-    ...(body === undefined
-      ? {}
-      : {
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        }),
-  });
-  return response.json() as Promise<T>;
-}
 
 export const getProfile = () => json<DemoProfile>("/api/profile");
 export const saveProfile = (

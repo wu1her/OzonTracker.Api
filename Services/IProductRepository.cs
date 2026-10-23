@@ -11,5 +11,6 @@ public interface IProductRepository
     Task<Product?> GetByOzonIdAsync(long ozonProductId, CancellationToken cancellationToken = default);
     Task<TrackingResult> TrackAsync(long ozonProductId, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(long ozonProductId, CancellationToken cancellationToken = default);
-    Task<int> SimulateAsync(CancellationToken cancellationToken = default);
+    Task<int> SimulateAsync(CancellationToken cancellationToken = default, string scenario = "random", long? ozonProductId = null);
+    Task<bool> SetPreferencesAsync(long ozonProductId, bool isFavorite, decimal? targetPrice, CancellationToken cancellationToken);
 }

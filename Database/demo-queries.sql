@@ -1,32 +1,27 @@
 ﻿USE [OzonTrackerDemo];
 GO
+-- Find your account ID. Password hashes are deliberately not selected.
+SELECT a.Id,a.Email,p.DisplayName,p.Subscription,a.CreatedAt
+FROM dbo.Accounts a JOIN dbo.AccountProfiles p ON p.AccountId=a.Id;
 
--- Каталог и текущие показатели (включая неотслеживаемые товары).
-SELECT p.OzonProductId, p.Name, p.IsTracked, s.*
-FROM dbo.Products p
-CROSS APPLY (SELECT TOP (1) CapturedAt, Price, OzonCardPrice, Stocks, SoldUnits, Rating, ReviewCount
-             FROM dbo.ProductSnapshots WHERE ProductId = p.Id ORDER BY CapturedAt DESC, Id DESC) s
-ORDER BY p.OzonProductId;
+-- Replace 1 with your account ID from the result above.
+DECLARE @AccountId int=1;
 
--- История и изменения цены между сохранёнными срезами.
-SELECT p.Name, s.CapturedAt, s.Price,
-       s.Price - LAG(s.Price) OVER (PARTITION BY p.Id ORDER BY s.CapturedAt, s.Id) AS PriceChange,
-       s.OzonCardPrice, s.Stocks, s.SoldUnits, s.Rating, s.ReviewCount
-FROM dbo.Products p
-JOIN dbo.ProductSnapshots s ON s.ProductId = p.Id
-ORDER BY p.Name, s.CapturedAt, s.Id;
+SELECT p.OzonProductId,p.Name,a.IsTracked,a.IsFavorite,a.TargetPrice,s.*
+FROM dbo.AccountProducts a JOIN dbo.Products p ON p.Id=a.ProductId
+CROSS APPLY(SELECT TOP(1) CapturedAt,Price,OzonCardPrice,Stocks,SoldUnits,Rating,ReviewCount
+    FROM dbo.AccountSnapshots WHERE AccountId=@AccountId AND ProductId=p.Id ORDER BY CapturedAt DESC,Id DESC)s
+WHERE a.AccountId=@AccountId ORDER BY p.OzonProductId;
 
-/* Пример ручного изменения цены. Выделите и выполните отдельно.
-   История дополняется, старые срезы не перезаписываются.
-   Затем нажмите «Обновить список» в приложении.
+SELECT p.Name,s.CapturedAt,s.Price,
+    s.Price-LAG(s.Price)OVER(PARTITION BY s.ProductId ORDER BY s.CapturedAt,s.Id)AS PriceChange,
+    s.OzonCardPrice,s.Stocks,s.SoldUnits,s.Rating,s.ReviewCount
+FROM dbo.AccountSnapshots s JOIN dbo.Products p ON p.Id=s.ProductId
+WHERE s.AccountId=@AccountId ORDER BY p.Name,s.CapturedAt,s.Id;
 
-DECLARE @OzonProductId bigint = 100000001;
-DECLARE @NewPrice decimal(18,2) = 4990.00;
-INSERT dbo.ProductSnapshots(ProductId, CapturedAt, Price, OzonCardPrice, Stocks, SoldUnits, Rating, ReviewCount)
-SELECT p.Id, SYSDATETIMEOFFSET(), @NewPrice, ROUND(@NewPrice * 0.94, 2),
-       s.Stocks, s.SoldUnits, s.Rating, s.ReviewCount
-FROM dbo.Products p
-CROSS APPLY (SELECT TOP (1) * FROM dbo.ProductSnapshots
-             WHERE ProductId = p.Id ORDER BY CapturedAt DESC, Id DESC) s
-WHERE p.OzonProductId = @OzonProductId;
-*/
+SELECT p.Name,n.Price,n.TargetPrice,n.CreatedAt,n.ReadAt
+FROM dbo.PriceNotifications n JOIN dbo.Products p ON p.Id=n.ProductId
+WHERE n.AccountId=@AccountId ORDER BY n.Id DESC;
+
+-- Change prices through application demo scenarios so alert rules are evaluated in the same transaction.
+-- Images remain shared catalog metadata: UPDATE dbo.Products SET ImageUrl=... WHERE OzonProductId=...;

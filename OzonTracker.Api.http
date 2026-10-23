@@ -1,5 +1,14 @@
 @OzonTracker.Api_HostAddress = http://localhost:5080
 
+# Protected requests below require a session in this HTTP client.
+# Configure email/password variables in your HTTP client environment; do not commit credentials.
+POST {{OzonTracker.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{"email":"{{email}}","password":"{{password}}"}
+
+###
+
 GET {{OzonTracker.Api_HostAddress}}/api/products
 Accept: application/json
 
@@ -22,3 +31,19 @@ POST {{OzonTracker.Api_HostAddress}}/api/demo/simulate
 
 ### Untrack without deleting price history
 DELETE {{OzonTracker.Api_HostAddress}}/api/products/100000007
+
+
+### Favorites and target price
+PUT {{OzonTracker.Api_HostAddress}}/api/products/100000001/preferences
+Content-Type: application/json
+
+{"isFavorite":true,"targetPrice":4000}
+
+### Demo sale (current account only)
+POST {{OzonTracker.Api_HostAddress}}/api/demo/scenario
+Content-Type: application/json
+
+{"scenario":"sale","ozonProductId":100000001}
+
+###
+GET {{OzonTracker.Api_HostAddress}}/api/notifications

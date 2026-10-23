@@ -8,6 +8,10 @@ export interface DemoProfile {
   email: string | null;
   subscription: Subscription;
   avatarUrl: string | null;
+  refreshMinutes: number;
+  loginEmail: string;
+  notificationsEnabled: boolean;
+  compactTable: boolean;
 }
 
 export interface ChatMessage {

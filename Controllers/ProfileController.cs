@@ -58,4 +58,7 @@ public sealed class ProfileController(SqlProfileRepository profiles) : Controlle
 
     [HttpDelete("avatar")]
     public async Task<IActionResult> DeleteAvatar(CancellationToken ct) => Ok(await profiles.SetAvatarAsync(null, null, ct));
+
+    [HttpPut("settings")]
+    public async Task<IActionResult> Settings(RefreshSettingsRequest request, CancellationToken ct) => Ok(await profiles.SetSettingsAsync(request, ct));
 }

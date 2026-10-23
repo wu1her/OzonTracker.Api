@@ -40,4 +40,11 @@ public sealed class ProductsController(IProductRepository repository) : Controll
     public async Task<IActionResult> Delete(long ozonProductId, CancellationToken cancellationToken) =>
         await repository.DeleteAsync(ozonProductId, cancellationToken)
             ? NoContent() : NotFound(new { message = "Товар не отслеживается." });
+
+    [HttpPut("{ozonProductId:long}/preferences")]
+    public async Task<IActionResult> Preferences(long ozonProductId, ProductPreferencesRequest request, CancellationToken ct)
+    {
+        if (!await repository.SetPreferencesAsync(ozonProductId, request.IsFavorite, request.TargetPrice, ct)) return NotFound();
+        return Ok(await repository.GetByOzonIdAsync(ozonProductId, ct));
+    }
 }

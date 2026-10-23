@@ -41,6 +41,12 @@ function Upload([byte[]]$Bytes) {
     } finally { $form.Dispose() }
 }
 
+# Create an isolated test account; cookies stay in this HttpClient instance.
+$testEmail = 'smoke-' + [Guid]::NewGuid().ToString('N') + '@example.com'
+$testPassword = [Guid]::NewGuid().ToString('N') + '!Aa1'
+$null = Request 'POST' '/api/auth/register' 200 @{ email = $testEmail; password = $testPassword; displayName = 'Smoke Test' }
+$null = Request 'PUT' '/api/profile/subscription' 200 @{ subscription = 'Basic' }
+
 $initial = $null
 $avatarBytes = $null
 $initialChatEmpty = $false

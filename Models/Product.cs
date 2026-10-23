@@ -34,5 +34,8 @@ public sealed class Product
 
     public int ReviewCount { get; set; }
 
+    public bool IsFavorite { get; set; }
+    public decimal? TargetPrice { get; set; }
+
     public List<ProductSnapshot> History { get; set; } = [];
 }

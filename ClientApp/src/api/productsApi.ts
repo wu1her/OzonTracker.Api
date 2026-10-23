@@ -1,7 +1,5 @@
+import { apiFetch, apiBase as apiBaseUrl } from "./client";
 import type { Product } from "../models/Product";
-
-const apiBaseUrl =
-  import.meta.env.VITE_API_URL ?? "http://localhost:5080";
 
 async function getErrorMessage(response: Response): Promise<string> {
   try {
@@ -16,10 +14,8 @@ async function getErrorMessage(response: Response): Promise<string> {
   }
 }
 
-export async function getProducts(
-  signal?: AbortSignal,
-): Promise<Product[]> {
-  const response = await fetch(`${apiBaseUrl}/api/products`, {
+export async function getProducts(signal?: AbortSignal): Promise<Product[]> {
+  const response = await apiFetch(`${apiBaseUrl}/api/products`, {
     method: "GET",
     signal,
     headers: {
@@ -35,7 +31,7 @@ export async function getProducts(
 }
 
 export async function addProduct(value: string): Promise<Product> {
-  const response = await fetch(`${apiBaseUrl}/api/products`, {
+  const response = await apiFetch(`${apiBaseUrl}/api/products`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -51,10 +47,8 @@ export async function addProduct(value: string): Promise<Product> {
   return (await response.json()) as Product;
 }
 
-export async function deleteProduct(
-  ozonProductId: number,
-): Promise<void> {
-  const response = await fetch(
+export async function deleteProduct(ozonProductId: number): Promise<void> {
+  const response = await apiFetch(
     `${apiBaseUrl}/api/products/${ozonProductId}`,
     {
       method: "DELETE",
@@ -67,14 +61,16 @@ export async function deleteProduct(
 }
 
 export async function getCatalog(signal?: AbortSignal): Promise<Product[]> {
-  const response = await fetch(`${apiBaseUrl}/api/catalog`, { signal });
+  const response = await apiFetch(`${apiBaseUrl}/api/catalog`, { signal });
   if (!response.ok) throw new Error(await getErrorMessage(response));
   return response.json() as Promise<Product[]>;
 }
 
 export async function simulateChanges(): Promise<number> {
-  const response = await fetch(`${apiBaseUrl}/api/demo/simulate`, { method: "POST" });
+  const response = await apiFetch(`${apiBaseUrl}/api/demo/simulate`, {
+    method: "POST",
+  });
   if (!response.ok) throw new Error(await getErrorMessage(response));
-  const result = await response.json() as { updatedProducts: number };
+  const result = (await response.json()) as { updatedProducts: number };
   return result.updatedProducts;
 }
