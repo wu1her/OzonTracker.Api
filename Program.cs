@@ -3,6 +3,7 @@ using OzonTracker.Api.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddScoped<SqlProfileRepository>();
 
 builder.Services.AddScoped<
     IProductRepository,

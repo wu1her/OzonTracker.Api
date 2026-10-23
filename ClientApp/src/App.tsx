@@ -16,6 +16,8 @@ import {
   Home,
   Info,
   Moon,
+  MessageCircle,
+  Crown,
   Package,
   Plus,
   RefreshCcw,
@@ -47,6 +49,9 @@ import {
 } from "./api/productsApi";
 import type { Product } from "./models/Product";
 import { DemoControls, PriceChart, SnapshotTable } from "./DemoData";
+import { ChatPage, ProfileAvatar, ProfilePage, SubscriptionsPage } from "./AccountPages";
+import { getProfile } from "./api/profileApi";
+import type { DemoProfile } from "./models/Profile";
 import "./App.css";
 
 type AppPage =
@@ -54,7 +59,10 @@ type AppPage =
   | "statistics"
   | "history"
   | "settings"
-  | "about";
+  | "about"
+  | "profile"
+  | "subscriptions"
+  | "chat";
 
 type DetailTab =
   | "overview"
@@ -119,6 +127,9 @@ const navigationItems: Array<{
   { id: "products", label: "Главная", icon: Home },
   { id: "statistics", label: "Статистика", icon: BarChart3 },
   { id: "history", label: "История изменений", icon: History },
+  { id: "profile", label: "Мой профиль", icon: UserRound },
+  { id: "subscriptions", label: "Подписки", icon: Crown },
+  { id: "chat", label: "Демочат Pro", icon: MessageCircle },
   { id: "settings", label: "Настройки", icon: Settings },
   { id: "about", label: "О сервисе", icon: CircleHelp },
 ];
@@ -160,6 +171,8 @@ function Sidebar({
               key={item.id}
               className={`navigation-item ${isActive ? "active" : ""}`}
               type="button"
+              aria-label={item.label}
+              aria-current={isActive ? "page" : undefined}
               onClick={() => onNavigate(item.id)}
             >
               <Icon size={19} />
@@ -201,9 +214,13 @@ function Sidebar({
 
 function Topbar({
   theme,
+  profile,
+  onNavigate,
   onToggleTheme,
 }: {
   theme: Theme;
+  profile: DemoProfile | null;
+  onNavigate: (page: AppPage) => void;
   onToggleTheme: () => void;
 }) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -269,17 +286,17 @@ function Topbar({
           <button
             className="user-menu-button"
             type="button"
+            aria-label="Открыть меню профиля"
+            aria-expanded={isUserMenuOpen}
             onClick={() => {
               setIsUserMenuOpen((value) => !value);
               setIsNotificationsOpen(false);
             }}
           >
-            <span className="user-avatar">
-              <UserRound size={17} />
-            </span>
+            <ProfileAvatar profile={profile} />
             <span className="user-copy">
-              <strong>Пользователь</strong>
-              <span>Локальный профиль</span>
+              <strong>{profile?.displayName ?? "Профиль"}</strong>
+              <span>{profile?.subscription === "Basic" ? "Free · Basic" : profile?.subscription ?? "Загрузка…"}</span>
             </span>
             <ChevronDown size={15} />
           </button>
@@ -287,21 +304,23 @@ function Topbar({
           {isUserMenuOpen && (
             <div className="popover user-popover">
               <div className="user-popover-header">
-                <span className="user-avatar large">
-                  <UserRound size={21} />
-                </span>
+                <ProfileAvatar profile={profile} />
                 <div>
-                  <strong>Пользователь</strong>
-                  <span>Локальный профиль</span>
+                  <strong>{profile?.displayName ?? "Профиль"}</strong>
+                  <span>Демонстрационный профиль</span>
                 </div>
               </div>
-              <button type="button">
-                <Settings size={16} />
+              <button type="button" onClick={() => { onNavigate("profile"); setIsUserMenuOpen(false); }}>
+                <UserRound size={16} />
                 Настройки профиля
               </button>
-              <button type="button">
-                <ShieldCheck size={16} />
-                Безопасность
+              <button type="button" onClick={() => { onNavigate("subscriptions"); setIsUserMenuOpen(false); }}>
+                <Crown size={16} />
+                Моя подписка
+              </button>
+              <button type="button" onClick={() => { onNavigate("chat"); setIsUserMenuOpen(false); }}>
+                <MessageCircle size={16} />
+                Демочат Pro
               </button>
             </div>
           )}
@@ -1200,6 +1219,16 @@ function AboutPage() {
 
 export default function App() {
   const [page, setPage] = useState<AppPage>("products");
+  const [profile, setProfile] = useState<DemoProfile | null>(null);
+  const [profileError, setProfileError] = useState("");
+  const [profileLoading, setProfileLoading] = useState(true);
+  const loadProfile = useCallback(async () => {
+    setProfileLoading(true); setProfileError("");
+    try { setProfile(await getProfile()); }
+    catch (error) { setProfileError(error instanceof Error ? error.message : "Не удалось загрузить профиль."); }
+    finally { setProfileLoading(false); }
+  }, []);
+  useEffect(() => { void loadProfile(); }, [loadProfile]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1339,6 +1368,14 @@ export default function App() {
       );
     }
 
+    if (["profile", "subscriptions", "chat"].includes(page)) {
+      if (!profile) return <main className="page account-page"><h1>Личный кабинет</h1>
+        {profileLoading ? <p>Загрузка профиля…</p> : <><div className="account-feedback error" role="alert">{profileError || "Профиль недоступен."} Если база уже создана, выполните Database/profile.sql в SSMS.</div><button className="button secondary" onClick={() => void loadProfile()}>Повторить загрузку профиля</button></>}
+      </main>;
+      if (page === "profile") return <ProfilePage profile={profile} onUpdated={setProfile} onSubscriptions={() => handleNavigate("subscriptions")} />;
+      if (page === "subscriptions") return <SubscriptionsPage profile={profile} onUpdated={setProfile} onChat={() => handleNavigate("chat")} />;
+      return <ChatPage profile={profile} onSubscriptions={() => handleNavigate("subscriptions")} />;
+    }
     switch (page) {
       case "statistics":
         return <StatisticsPage products={products} />;
@@ -1384,6 +1421,8 @@ export default function App() {
       <div className="content-column">
         <Topbar
           theme={theme}
+          profile={profile}
+          onNavigate={handleNavigate}
           onToggleTheme={() =>
             setTheme((current) => (current === "dark" ? "light" : "dark"))
           }
