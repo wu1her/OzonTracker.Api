@@ -1,0 +1,490 @@
+{
+  "Accounts": [
+    {
+      "name": "Id",
+      "type": "int",
+      "key": "PK",
+      "null": false
+    },
+    {
+      "name": "Email",
+      "type": "nvarchar(254)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "NormalizedEmail",
+      "type": "nvarchar(254)",
+      "key": "UQ",
+      "null": false
+    },
+    {
+      "name": "PasswordHash",
+      "type": "nvarchar(500)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "CreatedAt",
+      "type": "datetimeoffset(7)",
+      "key": "",
+      "null": false
+    }
+  ],
+  "AccountProfiles": [
+    {
+      "name": "AccountId",
+      "type": "int",
+      "key": "PK FK",
+      "null": false
+    },
+    {
+      "name": "DisplayName",
+      "type": "nvarchar(60)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "FullName",
+      "type": "nvarchar(200)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "Phone",
+      "type": "nvarchar(25)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "About",
+      "type": "nvarchar(1000)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "Email",
+      "type": "nvarchar(254)",
+      "key": "",
+      "null": true
+    },
+    {
+      "name": "Subscription",
+      "type": "nvarchar(5)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "AvatarData",
+      "type": "varbinary(max)",
+      "key": "",
+      "null": true
+    },
+    {
+      "name": "AvatarContentType",
+      "type": "varchar(10)",
+      "key": "",
+      "null": true
+    },
+    {
+      "name": "RefreshMinutes",
+      "type": "int",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "UpdatedAt",
+      "type": "datetimeoffset(7)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "NotificationsEnabled",
+      "type": "bit",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "CompactTable",
+      "type": "bit",
+      "key": "",
+      "null": false
+    }
+  ],
+  "Products": [
+    {
+      "name": "Id",
+      "type": "uniqueidentifier",
+      "key": "PK",
+      "null": false
+    },
+    {
+      "name": "OzonProductId",
+      "type": "bigint",
+      "key": "UQ",
+      "null": false
+    },
+    {
+      "name": "Name",
+      "type": "nvarchar(200)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "Description",
+      "type": "nvarchar(1000)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "ImageUrl",
+      "type": "nvarchar(1000)",
+      "key": "",
+      "null": true
+    },
+    {
+      "name": "IsTracked",
+      "type": "bit",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "AddedAt",
+      "type": "datetimeoffset(7)",
+      "key": "",
+      "null": false
+    }
+  ],
+  "AccountProducts": [
+    {
+      "name": "AccountId",
+      "type": "int",
+      "key": "PK FK",
+      "null": false
+    },
+    {
+      "name": "ProductId",
+      "type": "uniqueidentifier",
+      "key": "PK FK",
+      "null": false
+    },
+    {
+      "name": "IsTracked",
+      "type": "bit",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "AddedAt",
+      "type": "datetimeoffset(7)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "IsFavorite",
+      "type": "bit",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "TargetPrice",
+      "type": "decimal(18,2)",
+      "key": "",
+      "null": true
+    },
+    {
+      "name": "TargetTriggered",
+      "type": "bit",
+      "key": "",
+      "null": false
+    }
+  ],
+  "ProductSnapshots": [
+    {
+      "name": "Id",
+      "type": "bigint",
+      "key": "PK",
+      "null": false
+    },
+    {
+      "name": "ProductId",
+      "type": "uniqueidentifier",
+      "key": "FK",
+      "null": false
+    },
+    {
+      "name": "CapturedAt",
+      "type": "datetimeoffset(7)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "Price",
+      "type": "decimal(18,2)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "OzonCardPrice",
+      "type": "decimal(18,2)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "Stocks",
+      "type": "int",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "SoldUnits",
+      "type": "int",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "Rating",
+      "type": "decimal(3,2)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "ReviewCount",
+      "type": "int",
+      "key": "",
+      "null": false
+    }
+  ],
+  "AccountSnapshots": [
+    {
+      "name": "Id",
+      "type": "bigint",
+      "key": "PK",
+      "null": false
+    },
+    {
+      "name": "AccountId",
+      "type": "int",
+      "key": "FK*",
+      "null": false
+    },
+    {
+      "name": "ProductId",
+      "type": "uniqueidentifier",
+      "key": "FK*",
+      "null": false
+    },
+    {
+      "name": "CapturedAt",
+      "type": "datetimeoffset(7)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "Price",
+      "type": "decimal(18,2)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "OzonCardPrice",
+      "type": "decimal(18,2)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "Stocks",
+      "type": "int",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "SoldUnits",
+      "type": "int",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "Rating",
+      "type": "decimal(3,2)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "ReviewCount",
+      "type": "int",
+      "key": "",
+      "null": false
+    }
+  ],
+  "AccountChatMessages": [
+    {
+      "name": "Id",
+      "type": "bigint",
+      "key": "PK",
+      "null": false
+    },
+    {
+      "name": "AccountId",
+      "type": "int",
+      "key": "FK",
+      "null": false
+    },
+    {
+      "name": "Role",
+      "type": "varchar(9)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "Text",
+      "type": "nvarchar(2000)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "CreatedAt",
+      "type": "datetimeoffset(7)",
+      "key": "",
+      "null": false
+    }
+  ],
+  "PriceNotifications": [
+    {
+      "name": "Id",
+      "type": "bigint",
+      "key": "PK",
+      "null": false
+    },
+    {
+      "name": "AccountId",
+      "type": "int",
+      "key": "FK*",
+      "null": false
+    },
+    {
+      "name": "ProductId",
+      "type": "uniqueidentifier",
+      "key": "FK*",
+      "null": false
+    },
+    {
+      "name": "Price",
+      "type": "decimal(18,2)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "TargetPrice",
+      "type": "decimal(18,2)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "CreatedAt",
+      "type": "datetimeoffset(7)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "ReadAt",
+      "type": "datetimeoffset(7)",
+      "key": "",
+      "null": true
+    }
+  ],
+  "UserProfiles": [
+    {
+      "name": "Id",
+      "type": "tinyint",
+      "key": "PK",
+      "null": false
+    },
+    {
+      "name": "DisplayName",
+      "type": "nvarchar(60)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "FullName",
+      "type": "nvarchar(200)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "Phone",
+      "type": "nvarchar(25)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "About",
+      "type": "nvarchar(1000)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "Email",
+      "type": "nvarchar(254)",
+      "key": "",
+      "null": true
+    },
+    {
+      "name": "Subscription",
+      "type": "nvarchar(5)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "AvatarData",
+      "type": "varbinary(max)",
+      "key": "",
+      "null": true
+    },
+    {
+      "name": "AvatarContentType",
+      "type": "varchar(10)",
+      "key": "",
+      "null": true
+    },
+    {
+      "name": "UpdatedAt",
+      "type": "datetimeoffset(7)",
+      "key": "",
+      "null": false
+    }
+  ],
+  "ChatMessages": [
+    {
+      "name": "Id",
+      "type": "bigint",
+      "key": "PK",
+      "null": false
+    },
+    {
+      "name": "ProfileId",
+      "type": "tinyint",
+      "key": "FK",
+      "null": false
+    },
+    {
+      "name": "Role",
+      "type": "varchar(9)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "Text",
+      "type": "nvarchar(2000)",
+      "key": "",
+      "null": false
+    },
+    {
+      "name": "CreatedAt",
+      "type": "datetimeoffset(7)",
+      "key": "",
+      "null": false
+    }
+  ]
+}
